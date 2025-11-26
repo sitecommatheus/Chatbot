@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chatbot Agendamento - Estilo WhatsApp</title>
+  <style>
+    /* CSS Estilo WhatsApp */
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #ece5dd;
+      margin: 0; padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    #chat-container {
+      width: 360px;
+      height: 600px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.2);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    /* Header */
+    #chat-header {
+      background: #075e54;
+      color: white;
+      padding: 12px 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+    }
+    #chat-header img {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      margin-right: 12px;
+      border: 2px solid white;
+    }
+    /* Body */
+    #chat-body {
+      flex: 1;
+      padding: 10px 15px;
+      background: #e5ddd5;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    /* Mensagens */
+    .message {
+      max-width: 70%;
+      margin-bottom: 12px;
+      padding: 8px 14px;
+      border-radius: 8px;
+      position: relative;
+      font-size: 14px;
+      line-height: 1.3;
+      word-wrap: break-word;
+      animation: fadeIn 0.5s ease forwards;
+    }
+    /* Mensagem do usuário */
+    .message.user {
+      background: #dcf8c6;
+      align-self: flex-end;
+      border-bottom-right-radius: 0;
+    }
+    /* Mensagem do bot */
+    .message.bot {
+      background: white;
+      align-self: flex-start;
+      border-bottom-left-radius: 0;
+    }
+    /* Data picker container */
+    #date-picker-container {
+      margin: 10px 0;
+    }
+    /* Hora picker container */
+    #time-picker-container {
+      margin: 10px 0;
+    }
+    /* Input área */
+    #chat-input-area {
+      padding: 10px 15px;
+      background: #f0f0f0;
+      display: flex;
+      align-items: center;
+    }
+    #chat-input {
+      flex: 1;
+      padding: 10px 12px;
+      border-radius: 20px;
+      border: none;
+      font-size: 14px;
+      outline: none;
+      box-shadow: inset 0 0 5px rgba(0,0,0,0.1);
+    }
+    #send-btn {
+      background: #25d366;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      margin-left: 10px;
+      border-radius: 50%;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.3s ease;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    #send-btn:hover {
+      background: #128c4a;
+    }
+    /* Scrollbar */
+    #chat-body::-webkit-scrollbar {
+      width: 6px;
+    }
+    #chat-body::-webkit-scrollbar-thumb {
+      background: rgba(0,0,0,0.1);
+      border-radius: 3px;
+    }
+
+    /* Fade in animation */
+    @keyframes fadeIn {
+      from {opacity: 0; transform: translateY(10px);}
+      to {opacity: 1; transform: translateY(0);}
+    }
+
+    /* Calendar styles */
+    table.calendar {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 14px;
+    }
+    table.calendar th {
+      background: #075e54;
+      color: white;
+      padding: 6px 8px;
+      text-align: center;
+    }
+    table.calendar td {
+      text-align: center;
+      padding: 8px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      transition: background 0.3s ease;
+      user-select: none;
+    }
+    table.calendar td:hover:not(.disabled):not(.selected) {
+      background: #a7d7a7;
+    }
+    table.calendar td.disabled {
+      color: #bbb;
+      cursor: not-allowed;
+      background: transparent;
+    }
+    table.calendar td.selected {
+      background: #25d366;
+      color: white;
+      font-weight: 700;
+    }
+    /* Extra button for human */
+    #human-contact-btn {
+      background: #ff4c4c;
+      color: white;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 8px;
+      font-weight: 600;
+      box-shadow: 0 2px 6px rgba(255,0,0,0.3);
+      transition: background 0.3s ease;
+    }
+    #human-contact-btn:hover {
+      background: #e63939;
+    }
+  </style>
+</head>
+<body>
+  <div id="chat-container">
+    <div id="chat-header">
+      <img src="https://cdn-icons-png.flaticon.com/512/124/124034.png" alt="Bot" />
+      Chatbot de Agendamento feito por Matheus 
+    </div>
+    <div id="chat-body"></div>
+    <div id="chat-input-area">
+      <input type="text" id="chat-input" placeholder="Digite sua mensagem..." autocomplete="off" />
+      <button id="send-btn">&#9658;</button>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const chatBody = document.getElementById('chat-body');
+      const chatInput = document.getElementById('chat-input');
+      const sendBtn = document.getElementById('send-btn');
+
+      // Horário e dias de funcionamento (segunda a sexta das 9h às 17h)
+      const workingDays = [1, 2, 3, 4, 5]; // Segunda(1) a Sexta(5)
+      const openingHour = 9;
+      const closingHour = 17;
+
+      // Simulando feriados (datas no formato yyyy-mm-dd)
+      const holidays = ['2025-12-25', '2025-11-28'];
+
+      // Armazena dados do agendamento durante a conversa
+      let appointment = {
+        date: null,
+        time: null
+      };
+
+      // Estado da conversa
+      let conversationState = 'welcome'; // estados: welcome, chooseDate, chooseTime, confirm, done, human
+
+      // Datas com horários ocupados (exemplo)
+      const bookedSlots = {
+        '2025-11-27': ['09:00', '13:00'],
+        '2025-11-26': ['10:00', '11:00', '15:00']
+      };
+
+      // Palavras-chave para reconhecimento das dúvidas e atendimento humano
+      const keywordsFAQ = {
+        horario: 'Nosso horário de funcionamento é de segunda a sexta-feira, das 9h às 17h.',
+        funcionamento: 'Atendemos de terça a sexta, das 9h às 17h. Sábados e domingos estamos fechados.',
+        preco: 'Os preços variam conforme o serviço. Por favor, informe qual serviço deseja para mais detalhes.',
+        serviço: 'Oferecemos diversos serviços, como consultoria, suporte técnico e agendamentos.',
+        atendimento: 'Você pode solicitar atendimento humano a qualquer momento digitando "atendente" ou "falar com alguém".'
+      };
+
+      const humanKeywords = ['atendente', 'humano', 'falar com alguém', 'falar com atendente', 'ajuda humana', 'quero falar'];
+
+      // Função para mostrar mensagem no chat
+      function addMessage(text, sender='bot') {
+        const message = document.createElement('div');
+        message.classList.add('message', sender);
+        message.innerHTML = text;
+        chatBody.appendChild(message);
+        chatBody.scrollTop = chatBody.scrollHeight;
+      }
+
+      // Função para criar calendário do mês atual e permitir escolher dias válidos
+      function createCalendar(month, year) {
+        const date = new Date(year, month, 1);
+        let calendarHtml = '<table class="calendar"><thead><tr>';
+        const daysOfWeek = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+        daysOfWeek.forEach(day => calendarHtml += '<th>'+day+'</th>');
+        calendarHtml += '</tr></thead><tbody><tr>';
+
+        // Espaços antes do primeiro dia
+        for(let i=0; i<date.getDay(); i++) {
+          calendarHtml += '<td></td>';
+        }
+
+        while(date.getMonth() === month) {
+          const isDisabled = !workingDays.includes(date.getDay()) || isHoliday(date);
+          const dayStr = date.getDate();
+          const fullDateStr = date.toISOString().slice(0,10);
+          calendarHtml += `<td class="${isDisabled ? 'disabled' : ''}" data-date="${fullDateStr}">${dayStr}</td>`;
+
+          if(date.getDay() === 6) calendarHtml += '</tr><tr>'; // fim de semana
+          date.setDate(date.getDate()+1);
+        }
+        calendarHtml += '</tr></tbody></table>';
+        return calendarHtml;
+      }
+
+      // Verifica se a data é feriado
+      function isHoliday(date) {
+        const ymd = date.toISOString().slice(0,10);
+        return holidays.includes(ymd);
+      }
+
+      // Cria seletor de horário disponível para a data escolhida
+      function createTimeSelector(dateStr) {
+        const times = [];
+        for(let h=openingHour; h<closingHour; h++) {
+          times.push(`${h.toString().padStart(2,'0')}:00`);
+          times.push(`${h.toString().padStart(2,'0')}:30`);
+        }
+        times.push(`${closingHour.toString().padStart(2,'0')}:00`);
+
+        // Filtra os que já estão ocupados
+        const booked = bookedSlots[dateStr] || [];
+        const availableTimes = times.filter(t => !booked.includes(t));
+
+        if(availableTimes.length === 0) {
+          return '<p>Não há horários disponíveis para esse dia. Por favor, escolha outro dia.</p>';
+        }
+
+        let html = '<div id="time-picker-container"><p>Escolha um horário:</p><select id="time-select">';
+        availableTimes.forEach(t => {
+          html += `<option value="${t}">${t}</option>`;
+        });
+        html += '</select><br/><button id="time-confirm-btn" style="margin-top:8px;padding:6px 12px;background:#25d366;color:white;border:none;border-radius:5px;cursor:pointer;">Confirmar Horário</button></div>';
+
+        return html;
+      }
+
+      // Envia a mensagem do usuário e processa o fluxo do bot
+      function processUserInput(text) {
+        const lowerText = text.toLowerCase();
+
+        // Se estado é humano, responde informando conexão (mock)
+        if(conversationState === 'human') {
+          addMessage(text, 'user');
+          setTimeout(() => {
+            addMessage('Você está sendo conectado a um atendente humano. Por favor, aguarde...');
+            conversationState = 'done';
+          }, 500);
+          return;
+        }
+
+        addMessage(text, 'user');
+
+        // Primeiro, verifica se quer falar com humano
+        if (humanKeywords.some(k => lowerText.includes(k))) {
+          setTimeout(() => {
+            addMessage('Você gostaria de falar com um atendente humano. Vou conectar você.');
+            conversationState = 'human';
+          }, 400);
+          return;
+        }
+
+        // Depois, verifica palavras-chave FAQ
+        for(const key in keywordsFAQ) {
+          if(lowerText.includes(key)) {
+            setTimeout(() => {
+              addMessage(keywordsFAQ[key]);
+            }, 400);
+            return;
+          }
+        }
+
+        // Controle do fluxo principal
+        if(conversationState === 'welcome') {
+          setTimeout(() => {
+            addMessage(`Olá! Nosso atendimento funciona de segunda a sexta-feira, das ${openingHour}h às ${closingHour}h.`);
+            addMessage('Posso ajudar você a agendar uma consulta. Por favor, escolha uma data no calendário abaixo.');
+            addCalendarUI();
+            conversationState = 'chooseDate';
+          }, 400);
+        } else if(conversationState === 'chooseDate') {
+          // bloqueia envio manual nesse estado (usar clique no calendário)
+          setTimeout(() => {
+            addMessage('Por favor, escolha uma data clicando no calendário.', 'bot');
+          }, 400);
+        } else if(conversationState === 'chooseTime') {
+          // bloqueia envio manual nesse estado (usar seleção no dropdown)
+          setTimeout(() => {
+            addMessage('Por favor, escolha um horário na lista que apareceu.', 'bot');
+          }, 400);
+        } else if(conversationState === 'confirm') {
+          if(lowerText.includes('sim')) {
+            setTimeout(() => {
+              addMessage(`Sua consulta foi agendada para ${appointment.date} às ${appointment.time}. Obrigado!`);
+              conversationState = 'done';
+            }, 400);
+          } else if(lowerText.includes('não') || lowerText.includes('nao')) {
+            setTimeout(() => {
+              addMessage('Que pena! Vamos tentar novamente. Por favor, escolha uma data no calendário.');
+              addCalendarUI();
+              conversationState = 'chooseDate';
+            }, 400);
+          } else {
+            setTimeout(() => {
+              addMessage('Por favor, responda "sim" para confirmar ou "não" para cancelar.');
+            }, 400);
+          }
+        } else if(conversationState === 'done') {
+          setTimeout(() => {
+            addMessage('Se precisar de mais alguma coisa, é só chamar!');
+          }, 400);
+        }
+      }
+
+      // Adiciona o calendário à interface e escuta cliques para escolha da data
+      function addCalendarUI() {
+        const now = new Date();
+        const calendarHtml = createCalendar(now.getMonth(), now.getFullYear());
+        addMessage(calendarHtml, 'bot');
+        conversationState = 'chooseDate';
+
+        // Espera o layout renderizar para adicionar listener
+        setTimeout(() => {
+          const days = chatBody.querySelectorAll('td[data-date]');
+          days.forEach(day => {
+            if(!day.classList.contains('disabled')) {
+              day.addEventListener('click', () => {
+                // Marca o dia selecionado
+                days.forEach(d => d.classList.remove('selected'));
+                day.classList.add('selected');
+
+                appointment.date = day.getAttribute('data-date');
+                addMessage(`Você escolheu o dia ${appointment.date}`, 'bot');
+
+                // Passa para seleção de horário
+                addTimeSelectorUI(appointment.date);
+              });
+            }
+          });
+        }, 400);
+      }
+
+      // Adiciona o seletor de horário à interface e escuta confirmação
+      function addTimeSelectorUI(dateStr) {
+        const timeHtml = createTimeSelector(dateStr);
+        addMessage(timeHtml, 'bot');
+        conversationState = 'chooseTime';
+
+        setTimeout(() => {
+          const timeSelect = chatBody.querySelector('#time-select');
+          const confirmBtn = chatBody.querySelector('#time-confirm-btn');
+          if(confirmBtn) {
+            confirmBtn.addEventListener('click', () => {
+              const selectedTime = timeSelect.value;
+              appointment.time = selectedTime;
+              addMessage(`Você escolheu o horário ${selectedTime}`, 'bot');
+              addMessage('Confirma o agendamento? Responda "sim" ou "não".', 'bot');
+              conversationState = 'confirm';
+            });
+          }
+        }, 400);
+      }
+
+      // Evento de botão enviar
+      sendBtn.addEventListener('click', () => {
+        const text = chatInput.value.trim();
+        if(text) {
+          processUserInput(text);
+          chatInput.value = '';
+        }
+      });
+
+      // Enter também envia
+      chatInput.addEventListener('keydown', e => {
+        if(e.key === 'Enter') {
+          e.preventDefault();
+          sendBtn.click();
+        }
+      });
+
+      // Mensagem inicial automática
+      setTimeout(() => {
+        addMessage('Olá! Sou seu assistente virtual para marcação de consultas. Escreva qualquer coisa para começar. Exemplo: "horário", "agendar", "atendente".');
+      }, 800);
+    })();
+  </script>
+</body>
+</html>
